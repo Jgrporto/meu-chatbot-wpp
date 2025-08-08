@@ -1,8 +1,21 @@
-const qrcode = require('qrcode-terminal');
-const { Client, LocalAuth, Buttons, List, MessageMedia } = require('whatsapp-web.js');
+// =================================================================
+//                      ARQUIVO ROBO.JS COMPLETO
+// =================================================================
 
+// --- IMPORTS DAS BIBLIOTECAS ---
+// Importa os componentes necessários da whatsapp-web.js
+const { Client, LocalAuth, Buttons, List, MessageMedia } = require('whatsapp-web.js');
+// Importa a biblioteca para gerar o link do QR Code
+const qrcode = require('qrcode');
+
+console.log("Iniciando o bot...");
+
+// --- INICIALIZAÇÃO DO CLIENTE COM AS CONFIGURAÇÕES ---
 const client = new Client({
-    authStrategy: new LocalAuth(), // 2. Usa a estratégia de autenticação local
+    // 1. Estratégia de Autenticação Local para salvar a sessão e não precisar ler o QR Code a cada reinicialização
+    authStrategy: new LocalAuth(),
+    
+    // 2. Configurações do Puppeteer para rodar no ambiente da Railway (servidor Linux)
     puppeteer: {
         headless: true,
         args: [
@@ -12,43 +25,57 @@ const client = new Client({
             '--disable-accelerated-2d-canvas',
             '--no-first-run',
             '--no-zygote',
-            '--single-process',
+            '--single-process', // Essencial para ambientes de servidor
             '--disable-gpu'
         ],
     }
 });
 
+
+// --- EVENTOS DO CLIENTE ---
+
+// Evento 1: Geração do QR Code como um Link
 client.on('qr', qr => {
-qrcode.generate(qr, {small: false});
+    console.log('QR Code recebido! Escaneie a imagem que aparecer no link abaixo:');
+    // Usamos uma API externa para gerar a imagem do QR Code a partir do texto recebido
+    console.log(`LINK PARA O QR CODE -> https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qr)}`);
 });
 
+// Evento 2: Cliente está pronto e conectado
 client.on('ready', () => {
-    console.log('WhatsApp conectado.✅');
+    console.log('WhatsApp conectado.✅ Bot está pronto para operar!');
 });
 
-client.initialize();
+// Evento 3: Tratamento de Desconexão
+// Acionado se a conexão cair por algum motivo
+client.on('disconnected', (reason) => {
+    console.log('Cliente foi desconectado!', reason);
+    console.log('Tentando reconectar em 30 segundos...');
+    setTimeout(() => {
+        client.initialize(); 
+    }, 30000); // Tenta reiniciar após 30 segundos
+});
 
-const delay = ms => new Promise(res => setTimeout(res, ms)); // Função que usamos para criar o delay entre uma ação e outra
-
-// Funil
-
+// Evento 4: Recebimento de Mensagens (Sua lógica de funil)
 client.on('message', async msg => {
-
-    if (msg.body.match(/(menu22|Menu2|dia2|tarde2|noite22|oi222|Oi222|Olá222|olá2|ola22|Ola2)/i) && msg.from.endsWith('@c.us')) {
-
+    if (msg.body.match(/(menu|Menu|dia|tarde|noite|oi|Oi|Olá|olá|ola|Ola)/i) && msg.from.endsWith('@c.us')) {
         const chat = await msg.getChat();
-
-        await delay(3000); //delay de 3 segundos
-        await chat.sendStateTyping(); // Simulando Digitação
-        await delay(3000); //Delay de 3000 milisegundos mais conhecido como 3 segundos
-        const contact = await msg.getContact(); //Pegando o contato
-        const name = contact.pushname; //Pegando o nome do contato
-        await client.sendMessage(msg.from,'Olá! '+ name.split(" ")[0] + ' tudo bem? quem te enviou essa mensagem foi o robô que acabamos de criar, incrível né😎'); //Primeira mensagem de texto
-        await delay(3000); //delay de 3 segundos
-        await chat.sendStateTyping(); // Simulando Digitação
-        await client.sendMessage(msg.from,'A versão grátis do robô automatiza apenas mensagens de texto.'); //Primeira mensagem de texto
-        await delay(3000); //delay de 3 segundos
-        await chat.sendStateTyping(); // Simulando Digitação
+        
+        await delay(3000);
+        await chat.sendStateTyping();
+        await delay(3000);
+        
+        const contact = await msg.getContact();
+        const name = contact.pushname;
+        
+        await client.sendMessage(msg.from, 'Olá! ' + name.split(" ")[0] + ' tudo bem? quem te enviou essa mensagem foi o robô que acabamos de criar, incrível né😎');
+        
+        await delay(3000);
+        await chat.sendStateTyping();
+        await client.sendMessage(msg.from, 'A versão grátis do robô automatiza apenas mensagens de texto.');
+        
+        await delay(3000);
+        await chat.sendStateTyping();
         await client.sendMessage(msg.from, 'Na versão PRO: desbloqueie tudo!\n\n' +
             '✍️ Envio de textos\n' +
             '🎙️ Áudios\n' +
@@ -62,17 +89,23 @@ client.on('message', async msg => {
             '✅ E 3 Bônus exclusivos\n\n' +
             '🔥 Adquira a versão PRO agora: https://pay.kiwify.com.br/FkTOhRZ?src=pro'
         );
-        
-
     }
-
-
-
-
-
-
-
-
 });
 
 
+// --- MECANISMO DE SOBREVIVÊNCIA (KEEP-ALIVE) ---
+// Ping periódico para manter o processo ativo na Railway
+setInterval(() => {
+    client.getState().then((state) => {
+        console.log('Status da Conexão:', state || 'Desconectado');
+    }).catch((err) => {
+        console.log('Erro ao verificar status da conexão:', err);
+    });
+}, 60000); // Verifica a cada 60 segundos (1 minuto)
+
+
+// --- INICIALIZAÇÃO DO BOT E FUNÇÕES AUXILIARES ---
+console.log("Inicializando o cliente do WhatsApp...");
+client.initialize();
+
+const delay = ms => new Promise(res => setTimeout(res, ms));
