@@ -58,7 +58,7 @@ client.on('disconnected', (reason) => {
 
 // Evento 4: Recebimento de Mensagens (Sua lógica de funil)
 client.on('message', async msg => {
-    if (msg.body.match(/(menu|Menu|dia|tarde|noite|oi|Oi|Olá|olá|ola|Ola)/i) && msg.from.endsWith('@c.us')) {
+    if (msg.body.match(/(menu22|Menu22|dia22|tarde22|noite22|oi22|Oi22|Olá22|olá22|ola22|Ola22)/i) && msg.from.endsWith('@c.us')) {
         const chat = await msg.getChat();
         
         await delay(3000);
@@ -109,3 +109,4 @@ console.log("Inicializando o cliente do WhatsApp...");
 client.initialize();
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
+
