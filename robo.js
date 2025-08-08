@@ -7,6 +7,8 @@
 const { Client, LocalAuth, Buttons, List, MessageMedia } = require('whatsapp-web.js');
 // Importa a biblioteca para gerar o link do QR Code
 const qrcode = require('qrcode');
+const { randomUUID } = require('crypto'); // Para gerar a chave PIX aleatória
+const userState = {}; // "Memória" do bot para saber em que parte da conversa cada usuário está
 
 console.log("Iniciando o bot...");
 
@@ -56,39 +58,83 @@ client.on('disconnected', (reason) => {
     }, 30000); // Tenta reiniciar após 30 segundos
 });
 
-// Evento 4: Recebimento de Mensagens (Sua lógica de funil)
-client.on('message', async msg => {
-    if (msg.body.match(/(menu22|Menu22|dia22|tarde22|noite22|oi22|Oi22|Olá22|olá22|ola22|Ola22)/i) && msg.from.endsWith('@c.us')) {
-        const chat = await msg.getChat();
+
+// =================================================================
+//          NOVO FLUXO DE MENSAGEM INTERATIVO
+// =================================================================
+client.on('message', async (msg) => {
+    // Ignora mensagens de grupos e status
+    if (!msg.from.endsWith('@c.us')) {
+        return;
+    }
+
+    const contact = await msg.getContact();
+    const chat = await msg.getChat();
+    const user = msg.from;
+    const messageBody = msg.body.trim();
+
+    // --- ESTÁGIO 0: Início da Conversa ---
+    // O bot só é ativado se a mensagem for EXATAMENTE "TesteChatbotJG"
+    if (messageBody.toLowerCase() === 'testechatbotjg') {
+        const name = contact.pushname || "usuário";
         
-        await delay(3000);
+        await delay(1500);
         await chat.sendStateTyping();
-        await delay(3000);
+        await delay(1500);
+
+        const welcomeMessage = `Olá! ${name.split(" ")[0]}, me chamo JG e sou o chatbot pessoal do João Gabriel!\n\nComo posso te ajudar hoje?\n\n*1)* Tratar de Assuntos com o João\n*2)* Preciso da ajuda do João\n*3)* Quero o pix do João`;
         
-        const contact = await msg.getContact();
-        const name = contact.pushname;
+        await client.sendMessage(user, welcomeMessage);
         
-        await client.sendMessage(msg.from, 'Olá! ' + name.split(" ")[0] + ' tudo bem? quem te enviou essa mensagem foi o robô que acabamos de criar, incrível né😎');
-        
-        await delay(3000);
+        // Define o estado do usuário como "aguardando a escolha do menu"
+        userState[user] = 'awaiting_menu_choice';
+        return;
+    }
+
+    // --- ESTÁGIOS DA CONVERSA (Baseado na "memória") ---
+    const currentState = userState[user];
+
+    // Se o bot estiver aguardando a escolha do menu principal
+    if (currentState === 'awaiting_menu_choice') {
+        await delay(1000);
         await chat.sendStateTyping();
-        await client.sendMessage(msg.from, 'A versão grátis do robô automatiza apenas mensagens de texto.');
-        
-        await delay(3000);
-        await chat.sendStateTyping();
-        await client.sendMessage(msg.from, 'Na versão PRO: desbloqueie tudo!\n\n' +
-            '✍️ Envio de textos\n' +
-            '🎙️ Áudios\n' +
-            '🖼️ Imagens\n' +
-            '🎥 Vídeos\n' +
-            '📂 Arquivos\n\n' +
-            '💡 Simulação de "digitando..." e "gravando áudio"\n' +
-            '🚀 Envio de mensagens em massa\n' +
-            '📇 Captura automática de contatos\n' +
-            '💻 Aprenda como deixar o robô funcionando 24 hrs, com o PC desligado\n' +
-            '✅ E 3 Bônus exclusivos\n\n' +
-            '🔥 Adquira a versão PRO agora: https://pay.kiwify.com.br/FkTOhRZ?src=pro'
-        );
+        await delay(1500);
+
+        switch (messageBody) {
+            case '1':
+                await client.sendMessage(user, 'Ok! O João vai te responder em alguns instantes!');
+                delete userState[user]; // Limpa o estado do usuário
+                break;
+            case '2':
+                await client.sendMessage(user, 'Poxa, ele não está disponível agora! Mas ele pode te responder se você apertar a opção 3, quer tentar para ver se funciona?');
+                userState[user] = 'awaiting_sim_for_pix'; // Atualiza o estado para aguardar a confirmação
+                break;
+            case '3':
+                const pixKey = randomUUID(); // Gera uma chave aleatória
+                await client.sendMessage(user, `Eita coisa boa, segue a chave pix aleatória: ${pixKey}`);
+                delete userState[user]; // Limpa o estado do usuário
+                break;
+            default:
+                await client.sendMessage(user, 'Opção inválida. Por favor, responda com o número *1*, *2* ou *3*.');
+                // Mantém o estado para o usuário tentar novamente
+                break;
+        }
+        return;
+    }
+
+    // Se o bot estiver aguardando a resposta para a pergunta da opção 2
+    if (currentState === 'awaiting_sim_for_pix') {
+        if (messageBody.toLowerCase() === 'sim') {
+            await delay(1000);
+            await chat.sendStateTyping();
+            await delay(1500);
+            const pixKey = randomUUID();
+            await client.sendMessage(user, `Eita coisa boa, segue a chave pix aleatória: ${pixKey}`);
+        } else {
+            await client.sendMessage(user, 'Ok, sem problemas! Se precisar de algo mais, é só chamar.');
+        }
+        delete userState[user]; // Limpa o estado do usuário após a resposta
+        return;
     }
 });
 
@@ -109,4 +155,5 @@ console.log("Inicializando o cliente do WhatsApp...");
 client.initialize();
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
+
 
