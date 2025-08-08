@@ -1,7 +1,5 @@
 const qrcode = require('qrcode-terminal');
-const { Client, Buttons, List, MessageMedia } = require('whatsapp-web.js'); // Mudança Buttons
-// robo.js (VERSÃO FINAL PARA HOSPEDAGEM)
-const { Client, LocalAuth } = require('whatsapp-web.js'); // 1. Importa o LocalAuth
+const { Client, LocalAuth, Buttons, List, MessageMedia } = require('whatsapp-web.js');
 
 const client = new Client({
     authStrategy: new LocalAuth(), // 2. Usa a estratégia de autenticação local
@@ -67,6 +65,7 @@ client.on('message', async msg => {
         
 
     }
+
 
 
 
