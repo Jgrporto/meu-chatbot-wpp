@@ -10,6 +10,12 @@ const qrcode = require('qrcode');
 const { randomUUID } = require('crypto'); // Para gerar a chave PIX aleatória
 const userState = {}; // "Memória" do bot para saber em que parte da conversa cada usuário está
 
+// =================================================================
+//          LINHA DE INTERRUPÇÃO: Adicione ou remova esta linha
+// =================================================================
+process.exit(0); 
+// =================================================================
+
 console.log("Iniciando o bot...");
 
 // --- INICIALIZAÇÃO DO CLIENTE COM AS CONFIGURAÇÕES ---
@@ -155,5 +161,6 @@ console.log("Inicializando o cliente do WhatsApp...");
 client.initialize();
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
+
 
 
